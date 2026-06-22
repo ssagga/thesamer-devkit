@@ -676,8 +676,9 @@ copy_file "${KIT_ROOT}/templates/.claude/agents/planner.md"          "${TARGET_D
 copy_file "${KIT_ROOT}/templates/.claude/agents/implementer.md"      "${TARGET_DIR}/.claude/agents/implementer.md"
 copy_file "${KIT_ROOT}/templates/.claude/agents/reviewer.md"         "${TARGET_DIR}/.claude/agents/reviewer.md"
 
-# .claude/skills/pre-pr-review/
+# .claude/skills/
 copy_file "${KIT_ROOT}/templates/.claude/skills/pre-pr-review/SKILL.md"  "${TARGET_DIR}/.claude/skills/pre-pr-review/SKILL.md"
+copy_file "${KIT_ROOT}/templates/.claude/skills/status/SKILL.md"         "${TARGET_DIR}/.claude/skills/status/SKILL.md"
 
 # .github/
 copy_file "${KIT_ROOT}/templates/.github/pull_request_template.md"   "${TARGET_DIR}/.github/pull_request_template.md"
@@ -718,6 +719,7 @@ guard_against_gitignore() {
 
   local critical=(
     ".claude/skills/pre-pr-review/SKILL.md"
+    ".claude/skills/status/SKILL.md"
     ".claude/agents/explorer.md"
     ".claude/agents/planner.md"
     ".claude/agents/implementer.md"
@@ -787,6 +789,60 @@ guard_against_gitignore() {
 }
 
 # ---------------------------------------------------------------------------
+# Enforcement honesty.
+#   "No unreviewed change reaches the live branch" is ENFORCED only when the integration branch is
+#   branch-protected on the remote; otherwise it is convention. We never silently mutate the user's
+#   GitHub settings (same stance as "never auto-push / auto-create remotes") — we report what is in
+#   effect, print how to enable protection, and offer an inactive local pre-push backstop.
+# ---------------------------------------------------------------------------
+report_enforcement() {
+  [[ "${DRY_RUN}" == true || "${NO_GIT}" == true ]] && return 0
+  git -C "${TARGET_DIR}" rev-parse --git-dir >/dev/null 2>&1 || return 0
+
+  info "--- Review-gate enforcement ---"
+  note "The branch model is ENFORCED only if '${INTEGRATION_BRANCH}' is branch-protected on the"
+  note "remote (required PR + green CI). Without protection it is CONVENTION the agent + human keep."
+
+  if command -v gh >/dev/null 2>&1 && git -C "${TARGET_DIR}" remote get-url origin >/dev/null 2>&1; then
+    local vis
+    vis="$(gh repo view --json visibility -q .visibility 2>/dev/null || true)"
+    case "${vis}" in
+      PUBLIC)
+        note "Repo is PUBLIC → branch protection is available on the free plan." ;;
+      PRIVATE)
+        note "Repo is PRIVATE → protection needs GitHub Pro/Team (free-private returns 403)." ;;
+      *)
+        note "Could not read repo visibility (gh not authed, or no remote yet)." ;;
+    esac
+    note "Enable protection (one-time, human-authorized) via Settings → Branches, or:"
+    note "  gh api -X PUT repos/{owner}/{repo}/branches/${INTEGRATION_BRANCH}/protection ..."
+  else
+    note "gh CLI or 'origin' remote not available — skipping the remote protection check."
+  fi
+
+  # Offer a convention-only pre-push backstop, written INACTIVE so it never surprises a first push.
+  local hook="${TARGET_DIR}/.git/hooks/pre-push.devkit-sample"
+  if [[ -d "${TARGET_DIR}/.git/hooks" && ! -e "${hook}" ]]; then
+    cat > "${hook}" <<HOOK
+#!/usr/bin/env bash
+# devkit convention backstop — block direct pushes to the protected branch.
+# Activate: mv this file to .git/hooks/pre-push and chmod +x. Bypass once: git push --no-verify.
+protected="${INTEGRATION_BRANCH}"
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  if [[ "\${remote_ref}" == "refs/heads/\${protected}" ]]; then
+    echo "blocked: direct push to '\${protected}'. Open a PR from a feat/ branch." >&2
+    exit 1
+  fi
+done
+exit 0
+HOOK
+    note "Wrote an inactive pre-push backstop: .git/hooks/pre-push.devkit-sample"
+    note "Activate it to block direct pushes to '${INTEGRATION_BRANCH}':"
+    note "  mv .git/hooks/pre-push.devkit-sample .git/hooks/pre-push && chmod +x .git/hooks/pre-push"
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # Git guidance (unless --no-git)
 # ---------------------------------------------------------------------------
 if [[ "${NO_GIT}" == false ]]; then
@@ -817,6 +873,10 @@ if [[ "${NO_GIT}" == false ]]; then
 
   # The review gate (and the rest of the kit) must survive a fresh clone.
   guard_against_gitignore
+  echo ""
+
+  # Be honest about whether the branch model is enforced or merely convention.
+  report_enforcement
   echo ""
 fi
 

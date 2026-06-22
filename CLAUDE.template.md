@@ -42,6 +42,11 @@
 <other>        # project-specific scripts worth knowing
 ```
 
+**Run & observe (don't trust the diff — watch it work).** Before calling a change done, launch the
+app and look: web → start `<dev>`, open the URL, screenshot the changed view; CLI/TUI → run it;
+mobile → boot the simulator. If the package manager or runtime isn't on `PATH`, fall back to the
+local binaries (`./node_modules/.bin/<tool>`, `npx <tool>`, or the venv) rather than giving up.
+
 ---
 
 ## Architecture (map, not a tour)
@@ -58,12 +63,17 @@ Detail lives in `docs/`. Add to the map only what an agent needs to orient; link
 
 - **Branch model:** `feat/<name>` → PR → `<integration-branch>` (CI validates) → human merges →
   promote to `<live-branch>` as a deliberate release. **Never commit to `<live-branch>` directly.**
+  This is *enforced* only when `<integration-branch>` is branch-protected on the remote (required PR
+  + green CI); otherwise it is **convention** the agent and human uphold. (`devkit-init` reports
+  which one is in effect and offers a local `pre-push` backstop.)
 - **Naming / style:** <project conventions — match surrounding code, formatter, etc.>.
 - **Ceremony:** trivial changes (copy/style/isolated fix) → branch → PR. Substantial changes
   (new route, schema change, anything touching data/auth/public behavior) → write
   `docs/features/<name>.md` first, then build.
 - **Definition of done:** build passes · app actually run & observed · adversarial review done ·
   this brief + `docs/roadmap.md` updated · decision logged if a real trade-off was made · PR merged.
+- **Status updates ride the same PR.** Flip the roadmap row to `shipped` *in the PR that ships the
+  work* — merging the PR is what ships it. Never open a separate status-only PR.
 
 ---
 

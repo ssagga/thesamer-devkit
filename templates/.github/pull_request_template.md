@@ -24,7 +24,8 @@ screenshot, commands run, scenarios checked.>
 - [ ] **Adversarial review pass** completed (Reviewer agent or `/code-review`); findings resolved
       or consciously deferred.
 - [ ] `CLAUDE.md` accurate (updated if architecture/conventions changed).
-- [ ] `docs/roadmap.md` status updated.
+- [ ] `docs/roadmap.md` status flipped to shipped **in this PR** (merging ships it — no separate
+      status-only PR).
 - [ ] Decision-log entry appended if a non-obvious choice was made.
 - [ ] Feature spec reflects what was actually built.
 - [ ] **Data safety:** no drop/rename shipped with additive change; live store backed up before any
