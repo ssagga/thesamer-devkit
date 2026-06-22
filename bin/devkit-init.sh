@@ -675,10 +675,12 @@ copy_file "${KIT_ROOT}/templates/.claude/agents/explorer.md"         "${TARGET_D
 copy_file "${KIT_ROOT}/templates/.claude/agents/planner.md"          "${TARGET_DIR}/.claude/agents/planner.md"
 copy_file "${KIT_ROOT}/templates/.claude/agents/implementer.md"      "${TARGET_DIR}/.claude/agents/implementer.md"
 copy_file "${KIT_ROOT}/templates/.claude/agents/reviewer.md"         "${TARGET_DIR}/.claude/agents/reviewer.md"
+copy_file "${KIT_ROOT}/templates/.claude/agents/plan-presenter.md"   "${TARGET_DIR}/.claude/agents/plan-presenter.md"
 
 # .claude/skills/
 copy_file "${KIT_ROOT}/templates/.claude/skills/pre-pr-review/SKILL.md"  "${TARGET_DIR}/.claude/skills/pre-pr-review/SKILL.md"
 copy_file "${KIT_ROOT}/templates/.claude/skills/status/SKILL.md"         "${TARGET_DIR}/.claude/skills/status/SKILL.md"
+copy_file "${KIT_ROOT}/templates/.claude/skills/preview/SKILL.md"        "${TARGET_DIR}/.claude/skills/preview/SKILL.md"
 
 # .github/
 copy_file "${KIT_ROOT}/templates/.github/pull_request_template.md"   "${TARGET_DIR}/.github/pull_request_template.md"
@@ -720,7 +722,9 @@ guard_against_gitignore() {
   local critical=(
     ".claude/skills/pre-pr-review/SKILL.md"
     ".claude/skills/status/SKILL.md"
+    ".claude/skills/preview/SKILL.md"
     ".claude/agents/explorer.md"
+    ".claude/agents/plan-presenter.md"
     ".claude/agents/planner.md"
     ".claude/agents/implementer.md"
     ".claude/agents/reviewer.md"
