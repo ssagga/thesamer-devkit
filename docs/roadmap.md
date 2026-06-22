@@ -5,8 +5,8 @@ The backlog for building the kit itself. Status legend: `idea` · `speced` · `i
 
 ## Now / in-progress
 
-_(v0.2 hardening — all 13 items shipped on stacked PRs; pending human merge of the chain. Cut the
-`v0.2.0` tag after merge. See Shipped.)_
+_(Nothing in flight. **v0.2 shipped and tagged `v0.2.0`** — all 13 hardening items merged to `main`.
+See Shipped. Next backlog (v0.3) to be opened from real-world use.)_
 
 ## v0.2 Real-world hardening — COMPLETE
 
