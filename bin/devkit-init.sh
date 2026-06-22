@@ -521,16 +521,27 @@ fi
 # Git guidance (unless --no-git)
 # ---------------------------------------------------------------------------
 if [[ "${NO_GIT}" == false ]]; then
-  info "--- Git guidance ---"
+  info "--- Git setup ---"
   if ! git -C "${TARGET_DIR}" rev-parse --git-dir >/dev/null 2>&1; then
-    note "Target is NOT a git repo."
-    note "Run: git -C '${TARGET_DIR}' init && git -C '${TARGET_DIR}' checkout -b ${INTEGRATION_BRANCH}"
-  else
-    if git -C "${TARGET_DIR}" show-ref --verify --quiet "refs/heads/${INTEGRATION_BRANCH}" 2>/dev/null; then
-      ok "Branch '${INTEGRATION_BRANCH}' exists."
+    # No repo yet — initialize one on the integration branch (this is part of
+    # "init what the system needs"). We never auto-commit; the user reviews first.
+    if [[ "${DRY_RUN}" == true ]]; then
+      dry "Would run: git init -b ${INTEGRATION_BRANCH}"
+    elif git -C "${TARGET_DIR}" init -b "${INTEGRATION_BRANCH}" >/dev/null 2>&1; then
+      ok "Initialized empty git repo on branch '${INTEGRATION_BRANCH}'."
     else
-      note "Integration branch '${INTEGRATION_BRANCH}' does not exist yet."
-      note "Run: git -C '${TARGET_DIR}' checkout -b ${INTEGRATION_BRANCH}"
+      # Older git without `init -b`: init, then point HEAD at the integration branch.
+      git -C "${TARGET_DIR}" init >/dev/null 2>&1 || true
+      git -C "${TARGET_DIR}" symbolic-ref HEAD "refs/heads/${INTEGRATION_BRANCH}" >/dev/null 2>&1 || true
+      ok "Initialized empty git repo on branch '${INTEGRATION_BRANCH}'."
+    fi
+  else
+    # Existing repo — don't touch its branches; just report/advise.
+    if git -C "${TARGET_DIR}" show-ref --verify --quiet "refs/heads/${INTEGRATION_BRANCH}" 2>/dev/null; then
+      ok "Integration branch '${INTEGRATION_BRANCH}' exists."
+    else
+      note "Integration branch '${INTEGRATION_BRANCH}' not found in this existing repo."
+      note "Create it when ready: git -C '${TARGET_DIR}' checkout -b ${INTEGRATION_BRANCH}"
     fi
   fi
   echo ""
@@ -592,5 +603,15 @@ info "  feat/<name>  →  PR  →  ${INTEGRATION_BRANCH}  (CI validates)  →  h
 echo ""
 info "--- TODOs for the operator to resolve ---"
 collect_todos
+echo ""
+info "--- Next steps ---"
+if [[ "${DRY_RUN}" == true ]]; then
+  info "  (dry run — re-run without --dry-run to apply.)"
+else
+  info "  1. Finish the brief: open this repo in Claude Code and run /devkit-init,"
+  info "     which fills the TODOs above by reading your code. Or edit CLAUDE.md by hand."
+  info "  2. Commit the scaffold:  git add -A && git commit -m 'chore: adopt agent-dev system'"
+  info "  3. Start your first feature on a branch:  git checkout -b feat/<name>"
+fi
 echo ""
 ok "devkit-init complete."

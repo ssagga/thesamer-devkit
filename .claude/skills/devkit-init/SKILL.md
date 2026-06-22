@@ -42,9 +42,11 @@ Keep `CLAUDE.md` lean (~100–150 lines). If you're inlining detail, move it to 
 
 ## Step 3 — Set up the branch model
 
-Follow the script's git guidance. Ensure the integration branch exists and the human understands:
-`feat/<name>` → PR → integration (CI validates) → human merges; live promotion is a separate gate.
-**Do not create a GitHub remote or push** unless the human explicitly authorizes it.
+The script auto-initializes a **fresh** repo on the integration branch (and leaves an existing
+repo's branches untouched — it only advises there). It never auto-commits. Confirm the human
+understands the model: `feat/<name>` → PR → integration (CI validates) → human merges; live
+promotion is a separate gate. **Do not create a GitHub remote or push** unless the human explicitly
+authorizes it.
 
 ## Step 4 — Hand off for review
 

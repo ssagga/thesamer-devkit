@@ -26,6 +26,7 @@ _(scaffold complete — see Shipped)_
 | System docs (README rewrite, 5-min onboarding) | 2026-06-22 | All §10 acceptance criteria verified. |
 | GitHub remote + push + CI activation | 2026-06-22 | Private repo `ssagga/thesamer-devkit`; `main` pushed; CI green. |
 | One-command GitHub bootstrap installer | 2026-06-22 | `install.sh` (`curl … \| bash`) + README single-command/agent-prompt. PR #2. Activates when repo goes public. |
+| Turnkey git init (one-liner sets up repo + branch) | 2026-06-22 | `devkit-init.sh` auto-inits a fresh repo on the integration branch; crisp next-steps. PR #4. |
 
 ## Acceptance criteria (definition of done for the whole scaffold — spec §10)
 

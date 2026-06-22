@@ -49,8 +49,9 @@ kit's centerpiece deliverable — it must work the same on project #1 and projec
 - **Scaffold (idempotent):** copy templates; never clobber an existing file unless `--force`
   (skip + warn instead). Fill unambiguous `CLAUDE.md` tokens (project name, stack line, commands,
   branch names) and `ci.yml` (install/build/test, integration branch). Stamp the seed ADR date.
-- **Git:** ensure a repo (offer `git init` guidance if absent); ensure the integration branch
-  exists; print the branch model. Do **not** push or create remotes.
+- **Git:** for a **fresh** target, `git init -b <integration>` (auto-init is part of "init what the
+  system needs"); for an **existing** repo, leave branches alone and only advise. Never auto-commit,
+  push, or create remotes. (Added in `feat/turnkey-git-init` to make the one-liner fully turnkey.)
 - End with a printed "how we work here" summary + the list of `TODO`s the human must resolve.
 
 **Skill (`devkit-init`):** runs the script, reads the generated `CLAUDE.md`, fills the semantic
