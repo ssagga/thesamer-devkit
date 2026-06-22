@@ -5,15 +5,14 @@ The backlog for building the kit itself. Status legend: `idea` · `speced` · `i
 
 ## Now / in-progress
 
-| Item | Status | Branch | Notes |
-|------|--------|--------|-------|
-| System docs (README rewrite, 5-min onboarding) | in-progress | `feat/system-docs` | Last build item before remote. |
+_(scaffold complete — see Shipped)_
 
 ## Next
 
 | Item | Status | Spec ref | Notes |
 |------|--------|----------|-------|
-| GitHub remote + push + activate CI | idea | — | After `gh auth login`. Repo: `thesamer-devkit` (private). Then make CI a required check on `main`. |
+| Make CI a required status check on `main` | idea | §7 | Branch protection: require the `CI` check (and PRs) so nothing reaches `main` red/unreviewed. Owner action in repo Settings → Branches (plan-dependent for private repos). |
+| Bump `actions/checkout` when GitHub finalizes Node 20 deprecation | idea | — | Non-blocking CI annotation today. |
 
 ## Shipped
 
@@ -24,6 +23,8 @@ The backlog for building the kit itself. Status legend: `idea` · `speced` · `i
 | Agent role definitions | 2026-06-22 | `templates/.claude/agents/` with §6 model-tier defaults. |
 | Review + CI gates | 2026-06-22 | `templates/.github/` CI + PR template; `pre-pr-review` skill. |
 | Setup routine (`devkit-init` script + skill) | 2026-06-22 | Verified Node/empty/dry-run/force/idempotent. Spec [setup-routine](features/setup-routine.md). |
+| System docs (README rewrite, 5-min onboarding) | 2026-06-22 | All §10 acceptance criteria verified. |
+| GitHub remote + push + CI activation | 2026-06-22 | Private repo `ssagga/thesamer-devkit`; `main` pushed; CI green. |
 
 ## Acceptance criteria (definition of done for the whole scaffold — spec §10)
 
