@@ -7,22 +7,23 @@ The backlog for building the kit itself. Status legend: `idea` · `speced` · `i
 
 | Item | Status | Branch | Notes |
 |------|--------|--------|-------|
-| Bootstrap dev-system (branch model, kit's own brief + docs) | in-progress | `main` | Dogfood setup. ADR [0001](decisions/0001-branch-model-and-setup-routine.md). |
+| Setup routine (`bin/devkit-init.sh` + `devkit-init` skill) | in-progress | `feat/setup-routine` | Built & verified; spec [setup-routine](features/setup-routine.md). Pending merge. |
 
 ## Next (the §10 build backlog)
 
 | Item | Status | Spec ref | Notes |
 |------|--------|----------|-------|
-| Template files (docs tree + seed ADR template + 0001 system ADR) | idea | §10.1, §3 | `CLAUDE.template.md` already exists at root. |
-| Agent role definitions (Explorer/Planner/Implementer/Reviewer) | idea | §10.3, §5, §6 | Model-tier defaults baked in. |
-| Review + CI gates (adversarial review step, build CI, PR template w/ DoD) | idea | §10.4, §10.5, §7 | CI dormant until remote exists. |
-| Setup routine (`bin/devkit-init.sh` + `devkit-init` skill) | idea | §10.2 | The one-step installer; centerpiece delivery. |
-| System docs (README rewrite, 5-min onboarding) | idea | §10.6 | |
+| System docs (README rewrite, 5-min onboarding) | speced | §10.6 | Last build item before remote. |
 | GitHub remote + push + activate CI | idea | — | After `gh auth login`. Repo: `thesamer-devkit` (private). |
 
 ## Shipped
 
-_(nothing yet)_
+| Item | Shipped | Notes |
+|------|---------|-------|
+| Bootstrap dev-system (branch model, kit's brief + docs) | 2026-06-22 | ADR [0001](decisions/0001-branch-model-and-setup-routine.md). |
+| Template files (docs tree + seed ADR) | 2026-06-22 | `templates/docs/`; `CLAUDE.template.md` at root. |
+| Agent role definitions | 2026-06-22 | `templates/.claude/agents/` with §6 model-tier defaults. |
+| Review + CI gates | 2026-06-22 | `templates/.github/` CI + PR template; `pre-pr-review` skill. |
 
 ## Acceptance criteria (definition of done for the whole scaffold — spec §10)
 
