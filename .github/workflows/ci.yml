@@ -18,10 +18,10 @@ jobs:
     runs-on: ubuntu-latest # shellcheck is preinstalled on ubuntu runners
     steps:
       - uses: actions/checkout@v4
-      - name: ShellCheck bin/
+      - name: ShellCheck
         run: |
           shopt -s nullglob
-          files=(bin/*.sh)
+          files=(install.sh bin/*.sh)
           if [ ${#files[@]} -eq 0 ]; then echo "no shell scripts to lint"; exit 0; fi
           shellcheck "${files[@]}"
       - name: Smoke-test scaffolder (dry run)

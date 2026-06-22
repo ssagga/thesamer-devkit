@@ -11,16 +11,35 @@ This is **not** an application. It is the scaffold and methodology you install *
 
 ---
 
-## Install it into a project (one step)
+## Install it into a project
 
-From this kit, point the installer at any target repo:
+**One command** — run it from inside the repo you want to set up:
 
 ```bash
-bash bin/devkit-init.sh /path/to/your-project
-# options: --integration-branch NAME · --dry-run · --force · --no-git
+curl -fsSL https://raw.githubusercontent.com/ssagga/thesamer-devkit/main/install.sh | bash
 ```
 
-It scaffolds the whole system into the target and **never clobbers existing files** (re-runnable):
+It downloads the kit to a temp dir and scaffolds the system into the current directory —
+**without clobbering existing files** (safe to re-run). Pass scaffolder options after `-s --`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ssagga/thesamer-devkit/main/install.sh | bash -s -- --dry-run
+curl -fsSL https://raw.githubusercontent.com/ssagga/thesamer-devkit/main/install.sh | bash -s -- --integration-branch develop
+```
+
+> Prefer to read before you pipe to a shell? Download it first:
+> `curl -fsSL https://raw.githubusercontent.com/ssagga/thesamer-devkit/main/install.sh -o install.sh && less install.sh && bash install.sh`
+>
+> While this repo is **private**, the `curl` URL won't resolve — clone with `gh` instead:
+> `gh repo clone ssagga/thesamer-devkit /tmp/devkit && (cd your-project && bash /tmp/devkit/bin/devkit-init.sh)`
+
+**Or just ask your agent** — paste this into a Claude Code session opened in your project:
+
+> Set up this repo with the agent-driven dev system from `github.com/ssagga/thesamer-devkit`.
+> Run its `install.sh` (or clone it and run `bin/devkit-init.sh`) against this directory, then
+> finish `CLAUDE.md` by reading my code and resolving the `TODO` markers.
+
+Either path scaffolds:
 
 - `CLAUDE.md` — the always-loaded brief, with detected stack/commands/branch model filled in and
   `TODO` markers left wherever it couldn't infer.
@@ -29,9 +48,12 @@ It scaffolds the whole system into the target and **never clobbers existing file
 - `.claude/skills/pre-pr-review/` — the standing adversarial review gate.
 - `.github/` — a build-validation CI workflow + a PR template embedding the Definition of Done.
 
-**Inside an agent session**, run the `/devkit-init` skill instead — it runs the script, then fills
-the parts a script can't (architecture map, gotchas, deploy/live branch) and walks you through
-review. Then commit the result on a branch and you're working in the system.
+**Then finish the brief.** Inside a Claude Code session, run the `/devkit-init` skill — it fills the
+parts a script can't (architecture map, gotchas, deploy/live branch) and walks you through review.
+Commit the result on a branch and you're working in the system.
+
+> **Cloned the kit for local/dev use?** Skip the download and run the engine directly:
+> `bash bin/devkit-init.sh /path/to/project` (options: `--integration-branch NAME · --dry-run · --force · --no-git`).
 
 ---
 
@@ -66,7 +88,8 @@ No change reaches the live branch without a reviewable diff and a human approval
 |------|------------|
 | [`agent-dev-system-spec.md`](agent-dev-system-spec.md) | **The source of truth.** The why, the principles, the agent roles, the model-routing strategy, the data-safety discipline. Read this to understand the system. |
 | [`CLAUDE.template.md`](CLAUDE.template.md) | The canonical centerpiece — the lean, always-loaded brief the installer fills into each target repo. |
-| [`bin/devkit-init.sh`](bin/devkit-init.sh) | The deterministic one-step installer. |
+| [`install.sh`](install.sh) | One-command bootstrap: fetches the kit from GitHub and runs the scaffolder against your repo. |
+| [`bin/devkit-init.sh`](bin/devkit-init.sh) | The deterministic scaffolder engine (what `install.sh` runs). |
 | [`.claude/skills/devkit-init/`](.claude/skills/devkit-init/SKILL.md) | The smart entry point (runs the script + fills semantic gaps). |
 | [`templates/`](templates/) | Everything the installer copies into a target: docs tree, agent roles, CI + PR template, review skill. |
 | [`CLAUDE.md`](CLAUDE.md) · [`docs/`](docs/) | This kit's *own* brief and docs — it is built using its own methodology (dogfooding). |
