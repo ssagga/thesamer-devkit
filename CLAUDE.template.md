@@ -88,6 +88,11 @@ Store: **<the persistent store>**.
 - **Back up `<the store>` before any schema change reaches `<live-branch>`.** Hard rule, not best-effort.
 - Destructive changes are a two-step ritual: ship additive + migrate first; remove the old shape
   in a later, separately-approved change.
+- **Build-time vs runtime data.** If the build can't see the production store, do **not** statically
+  pre-render pages that read it — they bake a build-time snapshot and silently serve stale or seed
+  data after every deploy (this exact bug bit in the wild). For any store-backed page, render
+  dynamically at request time, or cache at runtime with on-demand invalidation — never freeze store
+  reads into the build.
 
 ---
 
