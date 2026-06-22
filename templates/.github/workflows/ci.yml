@@ -1,0 +1,44 @@
+# CI — build-validation gate on the integration branch.
+# Installed by devkit-init. The <PLACEHOLDER> commands are filled from the detected stack;
+# review and adjust them for this project. The job that matters is "build must pass before merge."
+#
+# Make this a REQUIRED status check on the integration branch (repo Settings → Branches → branch
+# protection) so no PR can merge red. That is the automated half of the review gate; the human
+# approving the PR is the other half.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [<INTEGRATION_BRANCH>] # e.g. main — PRs targeting integration must pass
+  push:
+    branches: [<INTEGRATION_BRANCH>] # also validate the branch itself after merge
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- Toolchain setup (uncomment / adjust for the stack devkit-init detected) -------------
+      # - uses: actions/setup-node@v4
+      #   with: { node-version: 'lts/*', cache: '<PKG_MANAGER>' } # npm | pnpm | yarn
+      # - uses: actions/setup-python@v5
+      #   with: { python-version: '3.x' }
+      # - uses: actions/setup-go@v5
+      #   with: { go-version: 'stable' }
+
+      - name: Install
+        run: <INSTALL_CMD>        # e.g. pnpm install --frozen-lockfile
+
+      - name: Build
+        run: <BUILD_CMD>          # e.g. pnpm build   — REQUIRED: this is the gate
+
+      - name: Test
+        run: <TEST_CMD>           # e.g. pnpm test    — or delete this step if there are no tests
