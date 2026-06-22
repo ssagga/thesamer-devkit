@@ -5,9 +5,7 @@ The backlog for building the kit itself. Status legend: `idea` · `speced` · `i
 
 ## Now / in-progress
 
-| Item | Status | Branch | Notes |
-|------|--------|--------|-------|
-| One-command GitHub bootstrap installer | in-progress | `feat/one-command-install` | `install.sh` (`curl … \| bash`) + README single-command/agent-prompt. Keeps bash engine. |
+_(scaffold complete — see Shipped)_
 
 ## Next
 
@@ -27,6 +25,7 @@ The backlog for building the kit itself. Status legend: `idea` · `speced` · `i
 | Setup routine (`devkit-init` script + skill) | 2026-06-22 | Verified Node/empty/dry-run/force/idempotent. Spec [setup-routine](features/setup-routine.md). |
 | System docs (README rewrite, 5-min onboarding) | 2026-06-22 | All §10 acceptance criteria verified. |
 | GitHub remote + push + CI activation | 2026-06-22 | Private repo `ssagga/thesamer-devkit`; `main` pushed; CI green. |
+| One-command GitHub bootstrap installer | 2026-06-22 | `install.sh` (`curl … \| bash`) + README single-command/agent-prompt. PR #2. Activates when repo goes public. |
 
 ## Acceptance criteria (definition of done for the whole scaffold — spec §10)
 
