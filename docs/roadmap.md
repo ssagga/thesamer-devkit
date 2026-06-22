@@ -16,9 +16,9 @@ Suggested order: A → B → E quick wins → preferences mechanism → C, D.
 | # | Item | Group | Status |
 |---|------|-------|--------|
 | 0 | Cross-cutting: "involvement preferences" mechanism (plan/preview gates) | core | idea |
-| 1 | Recursive + dep-aware store detection (missed nested `data/*.db`) | A install | idea |
-| 2 | Don't let the installer's own files be gitignored (`pre-pr-review` skill) | A install | idea |
-| 3 | Generate a runnable CI workflow (no double pnpm-version pin) | A install | idea |
+| 1 | Recursive + dep-aware store detection (missed nested `data/*.db`) | A install | shipped |
+| 2 | Don't let the installer's own files be gitignored (`pre-pr-review` skill) | A install | shipped |
+| 3 | Generate a runnable CI workflow (no double pnpm-version pin) | A install | shipped |
 | 4 | Infer live/deploy branch from existing workflows (`main` vs `production`) | B brief | idea |
 | 5 | Add "build-time vs runtime data" hazard to the template | B brief | idea |
 | 6 | Plan-presentation gate agent (present plan before code, per preference) | C workflow | idea |
@@ -47,6 +47,7 @@ Suggested order: A → B → E quick wins → preferences mechanism → C, D.
 | One-command GitHub bootstrap installer | 2026-06-22 | `install.sh` (`curl … \| bash`) + README single-command/agent-prompt. PR #2. |
 | Turnkey git init (one-liner sets up repo + branch) | 2026-06-22 | `devkit-init.sh` auto-inits a fresh repo on the integration branch; crisp next-steps. PR #4. |
 | Open-source launch (public repo, MIT, branch protection) | 2026-06-22 | Repo public; MIT LICENSE (PR #5); `main` protected (required `Lint scaffolder` check + PR). Live `curl \| bash` verified end-to-end (Next.js → 12 files → git on `main`). |
+| v0.2 group A — installer correctness (items 1, 2, 3) | 2026-06-22 | Recursive + dep-aware store detection w/ certainty (never deletes Data-safety on a false negative); gitignore guard keeps kit files tracked; runnable CI (corepack, no double pnpm-pin). Spec [installer-correctness](features/installer-correctness.md); verified against 6 fixtures. |
 
 ## Acceptance criteria (definition of done for the whole scaffold — spec §10)
 

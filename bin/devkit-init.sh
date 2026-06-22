@@ -161,6 +161,8 @@ STACK_DEV_CMD=""
 STACK_BUILD_CMD=""
 STACK_TEST_CMD=""
 STACK_STORE="none"
+STACK_STORE_CERTAIN=true   # false ⇒ inferred from a dependency only; needs human confirmation
+STACK_STORE_EVIDENCE=""    # human-readable why, e.g. "data/app.db" or "better-sqlite3 dependency"
 STACK_DEPLOY=""
 
 detect_stack() {
@@ -250,20 +252,76 @@ detect_stack() {
   [[ -n "${STACK_LANG}" ]]      && parts+=("${STACK_LANG}")
   [[ -n "${STACK_PKG_MANAGER}" && "${STACK_PKG_MANAGER}" != "npm" ]] && parts+=("${STACK_PKG_MANAGER}")
 
-  # Persistent store detection
+  # Persistent store detection — recursive + dependency-aware.
+  #
+  # Precedence (highest confidence first): ORM/config schema → on-disk DB file (root + common
+  # subdirs) → dependency inference → migrations/docker hints. A store found on disk or via ORM
+  # config is *certain*; a store inferred from a dependency only is flagged "(inferred — confirm)".
+  # We NEVER advise deleting the Data-safety section on a false negative — see the notice + TODOs
+  # below, which key off STACK_STORE_CERTAIN.
+
+  # Look for a SQLite-style DB file in the root and the common store subdirs (not a deep find —
+  # that would wander into node_modules and build output).
+  local found_db=""
+  local d dir f
+  for d in "" data db .data prisma var storage; do
+    dir="${t}${d:+/$d}"
+    [[ -d "${dir}" ]] || continue
+    for f in "${dir}"/*.sqlite "${dir}"/*.sqlite3 "${dir}"/*.db; do
+      [[ -e "${f}" ]] || continue   # literal glob when nothing matches
+      found_db="${f}"
+      break 2
+    done
+  done
+
+  # Map a package.json dependency to a store name (first match wins).
+  local dep_store="" dep_name=""
+  if [[ -f "${t}/package.json" ]]; then
+    local pj="${t}/package.json"
+    if   grep -qE '"(better-sqlite3|sqlite3|@libsql/client)"' "${pj}" 2>/dev/null; then
+      dep_store="SQLite";     dep_name="$(grep -oE 'better-sqlite3|sqlite3|@libsql/client' "${pj}" | head -1)"
+    elif grep -qE '"drizzle-orm"' "${pj}" 2>/dev/null; then
+      dep_store="Drizzle";    dep_name="drizzle-orm"
+    elif grep -qE '"@prisma/client"' "${pj}" 2>/dev/null; then
+      dep_store="Prisma";     dep_name="@prisma/client"
+    elif grep -qE '"(pg|postgres)"' "${pj}" 2>/dev/null; then
+      dep_store="PostgreSQL"; dep_name="$(grep -oE '"(pg|postgres)"' "${pj}" | head -1 | tr -d '"')"
+    elif grep -qE '"(mysql|mysql2)"' "${pj}" 2>/dev/null; then
+      dep_store="MySQL";      dep_name="$(grep -oE 'mysql2|mysql' "${pj}" | head -1)"
+    elif grep -qE '"(mongodb|mongoose)"' "${pj}" 2>/dev/null; then
+      dep_store="MongoDB";    dep_name="$(grep -oE 'mongoose|mongodb' "${pj}" | head -1)"
+    elif grep -qE '"(redis|ioredis)"' "${pj}" 2>/dev/null; then
+      dep_store="Redis";      dep_name="$(grep -oE 'ioredis|redis' "${pj}" | head -1)"
+    fi
+  fi
+
   if [[ -f "${t}/prisma/schema.prisma" ]]; then
-    STACK_STORE="Prisma"
+    STACK_STORE="Prisma"; STACK_STORE_CERTAIN=true; STACK_STORE_EVIDENCE="prisma/schema.prisma"
   elif ls "${t}"/drizzle.config.* >/dev/null 2>&1; then
-    STACK_STORE="Drizzle"
-  elif ls "${t}"/*.sqlite "${t}"/*.db >/dev/null 2>&1; then
-    STACK_STORE="SQLite"
+    STACK_STORE="Drizzle"; STACK_STORE_CERTAIN=true; STACK_STORE_EVIDENCE="drizzle.config"
+  elif [[ -n "${found_db}" ]]; then
+    STACK_STORE="SQLite"; STACK_STORE_CERTAIN=true
+    STACK_STORE_EVIDENCE="${found_db#"${t}"/}"   # show the path relative to the target
   elif [[ -d "${t}/supabase" ]]; then
-    STACK_STORE="Supabase"
+    STACK_STORE="Supabase"; STACK_STORE_CERTAIN=true; STACK_STORE_EVIDENCE="supabase/ directory"
+  elif [[ -n "${dep_store}" ]]; then
+    # No on-disk artifact, but a store client is a dependency — infer and flag for confirmation.
+    STACK_STORE="${dep_store}"; STACK_STORE_CERTAIN=false
+    STACK_STORE_EVIDENCE="${dep_name} dependency"
   elif [[ -d "${t}/migrations" ]]; then
-    STACK_STORE="database (migrations dir found)"
-  elif ls "${t}"/docker-compose*.yml "${t}"/docker-compose*.yaml >/dev/null 2>&1; then
-    if grep -qiE 'postgres|mysql|mongo|mariadb' "${t}"/docker-compose*.yml "${t}"/docker-compose*.yaml 2>/dev/null; then
-      STACK_STORE="docker-compose DB service"
+    STACK_STORE="database (migrations dir found)"; STACK_STORE_CERTAIN=true
+    STACK_STORE_EVIDENCE="migrations/ directory"
+  else
+    # docker-compose with a DB service. Collect the files that actually exist first — a bare
+    # `ls a.yml a.yaml` returns non-zero if EITHER operand is an unmatched literal, which would
+    # false-negative a project that uses only the .yaml spelling.
+    local dc_files=()
+    for f in "${t}"/docker-compose*.yml "${t}"/docker-compose*.yaml; do
+      [[ -e "${f}" ]] && dc_files+=("${f}")
+    done
+    if [[ ${#dc_files[@]} -gt 0 ]] && grep -qiE 'postgres|mysql|mongo|mariadb' "${dc_files[@]}" 2>/dev/null; then
+      STACK_STORE="docker-compose DB service"; STACK_STORE_CERTAIN=true
+      STACK_STORE_EVIDENCE="${dc_files[0]#"${t}"/}"
     fi
   fi
 
@@ -278,8 +336,14 @@ detect_stack() {
     STACK_DEPLOY="Render"
   elif [[ -f "${t}/Dockerfile" ]]; then
     STACK_DEPLOY="Docker"
-  elif ls "${t}"/.github/workflows/*.yml "${t}"/.github/workflows/*.yaml >/dev/null 2>&1; then
-    if grep -qiE 'deploy|release|publish' "${t}"/.github/workflows/*.yml "${t}"/.github/workflows/*.yaml 2>/dev/null; then
+  else
+    # GitHub Actions deploy workflow. Same .yml/.yaml glob hazard as above — collect existing
+    # files first so a `.yaml`-only workflow dir isn't missed.
+    local wf_files=()
+    for f in "${t}"/.github/workflows/*.yml "${t}"/.github/workflows/*.yaml; do
+      [[ -e "${f}" ]] && wf_files+=("${f}")
+    done
+    if [[ ${#wf_files[@]} -gt 0 ]] && grep -qiE 'deploy|release|publish' "${wf_files[@]}" 2>/dev/null; then
       STACK_DEPLOY="CI/CD (workflow detected)"
     fi
   fi
@@ -290,7 +354,13 @@ detect_stack() {
 detect_stack
 
 info "Stack     : ${STACK_DESCRIPTION:-unknown}"
-info "Store     : ${STACK_STORE}"
+if [[ "${STACK_STORE}" != "none" && "${STACK_STORE_CERTAIN}" == false ]]; then
+  info "Store     : ${STACK_STORE} (inferred from ${STACK_STORE_EVIDENCE} — confirm)"
+elif [[ "${STACK_STORE}" != "none" ]]; then
+  info "Store     : ${STACK_STORE} (${STACK_STORE_EVIDENCE})"
+else
+  info "Store     : none"
+fi
 info "Deploy    : ${STACK_DEPLOY:-unknown}"
 echo ""
 
@@ -323,6 +393,8 @@ build_claude_md() {
   local store_val
   if [[ "${STACK_STORE}" == "none" ]]; then
     store_val="none"
+  elif [[ "${STACK_STORE_CERTAIN}" == false ]]; then
+    store_val="${STACK_STORE} (inferred from ${STACK_STORE_EVIDENCE} — confirm) <!-- TODO: confirm the store; keep the Data-safety section below unless the project is truly stateless -->"
   else
     store_val="${STACK_STORE}"
   fi
@@ -420,13 +492,57 @@ build_ci_yml() {
 
   raw="${raw//<INTEGRATION_BRANCH>/${INTEGRATION_BRANCH}}"
 
-  # Replace each placeholder once. When a value was detected, substitute both the
-  # long-form comment occurrence and any bare occurrence. When no value was detected,
-  # only replace the long-form occurrence with a TODO marker (bare form no longer
-  # exists after that replacement, so no second pass needed).
+  # --- Toolchain setup: a real, runnable block for the detected stack -------------------------
+  # For Node we `corepack enable` first, which activates the pnpm/yarn version pinned in
+  # package.json's "packageManager" field. That is why we do NOT also pin a version in a
+  # pnpm/action-setup step — the two together fail with ERR_PNPM_BAD_PM_VERSION.
+  local toolchain
+  case "${STACK_LANG}" in
+    "TypeScript/JavaScript")
+      case "${STACK_PKG_MANAGER}" in
+        pnpm)
+          toolchain="      - name: Enable corepack (activates the pnpm version from package.json \"packageManager\")
+        run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'pnpm'" ;;
+        yarn)
+          toolchain="      - name: Enable corepack (activates the yarn version from package.json \"packageManager\")
+        run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'yarn'" ;;
+        *)
+          toolchain="      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'" ;;
+      esac ;;
+    "Python")
+      toolchain="      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'" ;;
+    "Go")
+      toolchain="      - uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'" ;;
+    "Rust")
+      toolchain="      # Rust stable toolchain is preinstalled on ubuntu-latest runners — no setup step needed." ;;
+    "Ruby")
+      toolchain="      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.x'
+          bundler-cache: true" ;;
+    *)
+      toolchain="      # TODO: devkit-init could not infer the toolchain — add the setup step for your stack." ;;
+  esac
+  raw="${raw//      # <<DEVKIT_TOOLCHAIN>>/${toolchain}}"
+
+  # --- Install / Build commands --------------------------------------------------------------
   local ci_install_todo="# TODO: devkit-init could not infer; fill in"
   local ci_build_todo="# TODO: devkit-init could not infer; fill in — REQUIRED: this is the gate"
-  local ci_test_todo="# TODO: devkit-init could not infer; fill in (or delete this step)"
 
   if [[ -n "${STACK_INSTALL_CMD}" ]]; then
     raw="${raw//<INSTALL_CMD>        # e.g. pnpm install --frozen-lockfile/${STACK_INSTALL_CMD}}"
@@ -442,17 +558,17 @@ build_ci_yml() {
     raw="${raw//<BUILD_CMD>          # e.g. pnpm build   — REQUIRED: this is the gate/${ci_build_todo}}"
   fi
 
+  # --- Test step: emit a real step only when a test command was detected ----------------------
+  # (An empty `run:` is invalid, so omit the step entirely rather than leave a TODO placeholder.)
+  local test_step
   if [[ -n "${STACK_TEST_CMD}" ]]; then
-    raw="${raw//<TEST_CMD>           # e.g. pnpm test    — or delete this step if there are no tests/${STACK_TEST_CMD}}"
-    raw="${raw//<TEST_CMD>/${STACK_TEST_CMD}}"
+    test_step="
+      - name: Test
+        run: ${STACK_TEST_CMD}"
   else
-    raw="${raw//<TEST_CMD>           # e.g. pnpm test    — or delete this step if there are no tests/${ci_test_todo}}"
+    test_step="      # No test command detected — add a Test step here when you have one."
   fi
-
-  local pm_val="${STACK_PKG_MANAGER:-}"
-  if [[ -n "${pm_val}" ]]; then
-    raw="${raw//<PKG_MANAGER>/${pm_val}}"
-  fi
+  raw="${raw//      # <<DEVKIT_TEST_STEP>>/${test_step}}"
 
   printf '%s\n' "${raw}"
 }
@@ -507,15 +623,101 @@ EOF
 echo ""
 
 # ---------------------------------------------------------------------------
-# Data-safety notice (when store = none)
+# Data-safety notice
 # ---------------------------------------------------------------------------
 if [[ "${STACK_STORE}" == "none" ]]; then
-  note "No persistent store detected."
-  note "The 'Data safety' section in CLAUDE.md should be deleted if this project truly has no state."
-  note "Edit ${TARGET_DIR}/CLAUDE.md and remove the section marked:"
+  # No store detected. This can be a true negative (static site) or a false one (a store we
+  # didn't recognise). NEVER tell the operator to delete the section outright — make it conditional.
+  note "No persistent store detected — could not find a DB file, ORM config, or store dependency."
+  note "If this project is truly stateless, delete the 'Data safety' section in CLAUDE.md:"
   note "  ## Data safety <!-- delete this whole section if the project has no persistent state -->"
+  note "If it DOES keep state we missed, KEEP that section and name the store by hand."
+  echo ""
+elif [[ "${STACK_STORE_CERTAIN}" == false ]]; then
+  note "Store inferred as '${STACK_STORE}' from the ${STACK_STORE_EVIDENCE} (no DB file on disk yet)."
+  note "Confirm it and complete the 'Data safety' section in CLAUDE.md — do NOT delete it on a guess."
   echo ""
 fi
+
+# ---------------------------------------------------------------------------
+# Guard: the installer's own files must never be gitignored.
+#   A blanket rule like `/.claude/skills/` would gitignore the review gate, so it would vanish on a
+#   fresh clone. After scaffolding we check-ignore the critical kit files and, if any are ignored,
+#   append narrow negations to .gitignore under a marker (idempotent) and warn loudly.
+# ---------------------------------------------------------------------------
+guard_against_gitignore() {
+  [[ "${DRY_RUN}" == true || "${NO_GIT}" == true ]] && return 0
+  git -C "${TARGET_DIR}" rev-parse --git-dir >/dev/null 2>&1 || return 0
+
+  local critical=(
+    ".claude/skills/pre-pr-review/SKILL.md"
+    ".claude/agents/explorer.md"
+    ".claude/agents/planner.md"
+    ".claude/agents/implementer.md"
+    ".claude/agents/reviewer.md"
+    ".github/workflows/ci.yml"
+    ".github/pull_request_template.md"
+    "CLAUDE.md"
+    "docs/roadmap.md"
+  )
+
+  local rel ignored=()
+  for rel in "${critical[@]}"; do
+    git -C "${TARGET_DIR}" check-ignore -q "${rel}" 2>/dev/null && ignored+=("${rel}")
+  done
+  if [[ ${#ignored[@]} -eq 0 ]]; then
+    ok "Devkit files are all tracked (not gitignored)."
+    return 0
+  fi
+
+  warn "These installed devkit files are gitignored and would NOT survive a fresh clone:"
+  for rel in "${ignored[@]}"; do warn "    ${rel}"; done
+
+  local marker="# devkit-init: keep agent-dev system files tracked (do not remove)"
+  if grep -qF "${marker}" "${TARGET_DIR}/.gitignore" 2>/dev/null; then
+    warn "A devkit negation block already exists in .gitignore but files are still ignored."
+    warn "Resolve by hand — a nested .gitignore or a later rule is re-excluding them."
+    return 0
+  fi
+
+  # Walk each ignored file's path prefixes; re-include only the prefixes git actually ignores.
+  # (Git cannot un-ignore a file whose parent dir is excluded, so parent dirs need negations too.)
+  local -a unignore=()
+  local prefix seg present q
+  for rel in "${ignored[@]}"; do
+    prefix=""
+    while IFS= read -r seg; do
+      [[ -n "${seg}" ]] || continue
+      prefix="${prefix}/${seg}"
+      git -C "${TARGET_DIR}" check-ignore -q "${prefix#/}" 2>/dev/null || continue
+      present=false
+      for q in "${unignore[@]}"; do [[ "${q}" == "${prefix}" ]] && { present=true; break; }; done
+      [[ "${present}" == false ]] && unignore+=("${prefix}")
+    done < <(printf '%s\n' "${rel}" | tr '/' '\n')
+  done
+
+  {
+    printf '\n%s\n' "${marker}"
+    for prefix in "${unignore[@]}"; do
+      if [[ -d "${TARGET_DIR}${prefix}" ]]; then
+        printf '!%s/\n' "${prefix}"
+      else
+        printf '!%s\n' "${prefix}"
+      fi
+    done
+  } >> "${TARGET_DIR}/.gitignore"
+  ok "Appended narrow .gitignore negations so devkit files stay tracked."
+
+  # Re-verify; if anything is still ignored, the operator must resolve it.
+  local still=()
+  for rel in "${ignored[@]}"; do
+    git -C "${TARGET_DIR}" check-ignore -q "${rel}" 2>/dev/null && still+=("${rel}")
+  done
+  if [[ ${#still[@]} -gt 0 ]]; then
+    warn "Still gitignored after negation — resolve by hand:"
+    for rel in "${still[@]}"; do warn "    ${rel}"; done
+  fi
+}
 
 # ---------------------------------------------------------------------------
 # Git guidance (unless --no-git)
@@ -545,6 +747,10 @@ if [[ "${NO_GIT}" == false ]]; then
     fi
   fi
   echo ""
+
+  # The review gate (and the rest of the kit) must survive a fresh clone.
+  guard_against_gitignore
+  echo ""
 fi
 
 # ---------------------------------------------------------------------------
@@ -557,8 +763,13 @@ collect_todos() {
   [[ -z "${STACK_DEV_CMD}" && -n "${STACK_LANG}" ]]      && todos+=("CLAUDE.md / ci.yml: <dev> command — not found in package.json.")
   [[ -z "${STACK_BUILD_CMD}" && -z "${STACK_LANG}" ]]    && todos+=("CLAUDE.md / ci.yml: <build> command — stack undetected; fill in manually.")
   [[ -z "${STACK_TEST_CMD}" ]]                           && todos+=("CLAUDE.md / ci.yml: <test> command — not found; fill in or delete step.")
-  [[ "${STACK_STORE}" != "none" ]]                       && todos+=("CLAUDE.md: Data-safety section — store is '${STACK_STORE}'; review <boot/deploy> placeholder.")
-  [[ "${STACK_STORE}" == "none" ]]                       && todos+=("CLAUDE.md: Delete the Data-safety section (no persistent store detected).")
+  if [[ "${STACK_STORE}" != "none" && "${STACK_STORE_CERTAIN}" == false ]]; then
+    todos+=("CLAUDE.md: Data-safety — store INFERRED as '${STACK_STORE}' from ${STACK_STORE_EVIDENCE}; confirm it and KEEP the section (never delete on a guess).")
+  elif [[ "${STACK_STORE}" != "none" ]]; then
+    todos+=("CLAUDE.md: Data-safety section — store is '${STACK_STORE}'; review <boot/deploy> placeholder.")
+  else
+    todos+=("CLAUDE.md: No store detected — if the project is truly stateless, delete the Data-safety section; otherwise KEEP it and name the store.")
+  fi
   todos+=("CLAUDE.md: One-sentence project description — fill in manually.")
   todos+=("CLAUDE.md: Architecture map (<area/dir> entries) — fill in manually.")
   todos+=("CLAUDE.md: Conventions / gotchas — fill in manually.")
