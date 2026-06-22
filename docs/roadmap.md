@@ -15,7 +15,7 @@ Suggested order: A → B → E quick wins → preferences mechanism → C, D.
 
 | # | Item | Group | Status |
 |---|------|-------|--------|
-| 0 | Cross-cutting: "involvement preferences" mechanism (plan/preview gates) | core | idea |
+| 0 | Cross-cutting: "involvement preferences" mechanism (plan/preview gates) | core | shipped |
 | 1 | Recursive + dep-aware store detection (missed nested `data/*.db`) | A install | shipped |
 | 2 | Don't let the installer's own files be gitignored (`pre-pr-review` skill) | A install | shipped |
 | 3 | Generate a runnable CI workflow (no double pnpm-version pin) | A install | shipped |
@@ -50,6 +50,7 @@ Suggested order: A → B → E quick wins → preferences mechanism → C, D.
 | v0.2 group A — installer correctness (items 1, 2, 3) | 2026-06-22 | Recursive + dep-aware store detection w/ certainty (never deletes Data-safety on a false negative); gitignore guard keeps kit files tracked; runnable CI (corepack, no double pnpm-pin). Spec [installer-correctness](features/installer-correctness.md); verified against 6 fixtures. |
 | v0.2 group B — brief fidelity (items 4, 5) | 2026-06-22 | Infers live/deploy branch from deploy workflows (`refs/heads` + `branches:` lists) and threads it through the brief; adds build-time-vs-runtime-data hazard to the template. Spec [brief-fidelity](features/brief-fidelity.md); verified against block/inline/fallback/stress fixtures. |
 | v0.2 group E — ergonomics (items 9, 10, 11, 12) | 2026-06-22 | Enforcement honesty (report, not auto-apply — ADR [0002](decisions/0002-enforcement-report-not-auto-apply.md); inactive `pre-push` backstop); status-flip rides the shipping PR; read-only `/status` skill; run-&-observe + PATH-fallback docs. Spec [ergonomics](features/ergonomics.md); review verdict SHIP. |
+| v0.2 item 0 — preferences keystone | 2026-06-22 | `## Working preferences` block in the brief (plan gate / preview gate / merge-stay-human), captured once by the `devkit-init` skill; the source the C-group gates read. Spec [preferences](features/preferences.md). |
 
 ## Acceptance criteria (definition of done for the whole scaffold — spec §10)
 

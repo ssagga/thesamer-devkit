@@ -17,9 +17,9 @@ From the kit, run the deterministic engine against the target repo:
 bash <kit>/bin/devkit-init.sh [--integration-branch NAME] /path/to/target
 ```
 
-It copies `CLAUDE.md`, `docs/`, `.claude/agents/`, `.claude/skills/pre-pr-review/`, and `.github/`
-into the target, fills the unambiguous placeholders (project name, stack, commands, branch model,
-CI commands), and prints a list of `TODO`s plus the "how we work here" summary. It never clobbers
+It copies `CLAUDE.md`, `docs/`, `.claude/agents/`, `.claude/skills/` (`pre-pr-review` + `status`),
+and `.github/` into the target, fills the unambiguous placeholders (project name, stack, commands,
+branch model, CI commands), and prints a list of `TODO`s plus the "how we work here" summary. It never clobbers
 existing files unless `--force`. Read its output — the printed TODOs are your work-list.
 
 ## Step 2 — Fill what the script couldn't
@@ -35,12 +35,28 @@ The script leaves `<!-- TODO: ... -->` markers for everything that needs judgmen
 - **Deploy + live branch** — if a deploy target was detected, confirm the real live branch name and
   fix the `<live-branch>` TODO. If the project does **not** deploy, the live branch is the
   integration branch.
-- **Data safety** — if a store was detected, name it precisely and confirm the backup/migration
-  rules fit it. If the script reported **no store**, delete the entire `## Data safety` section.
+- **Data safety** — if a store was detected (including one *inferred from a dependency* — confirm
+  it), name it precisely and confirm the backup/migration rules fit it. If the script reported **no
+  store**, delete the `## Data safety` section **only if the project is genuinely stateless** — never
+  delete it on a false negative; when unsure, keep it and name the store.
 
 Keep `CLAUDE.md` lean (~100–150 lines). If you're inlining detail, move it to `docs/` and link.
 
-## Step 3 — Set up the branch model
+## Step 3 — Capture working preferences (ask once)
+
+The `## Working preferences` block ships with sensible defaults (plan gate `substantial-only`,
+preview gate `visual-only`, merge/promote always human). Ask the human **once** whether those fit:
+
+- **Plan gate** — should the agent stop for go/no-go before coding `always`, only for
+  `substantial-only` work, or `never`?
+- **Preview gate** — pause to view the running change before VERIFY `always`, `visual-only`, or
+  `never`?
+
+Write their answers into the block. Don't offer to change merge/promote — that gate is always human
+by design. If they don't care, keep the defaults and move on; the gates are read directly from this
+block by the plan-presentation and preview steps of the lifecycle.
+
+## Step 4 — Set up the branch model
 
 The script auto-initializes a **fresh** repo on the integration branch (and leaves an existing
 repo's branches untouched — it only advises there). It never auto-commits. Confirm the human
@@ -48,7 +64,7 @@ understands the model: `feat/<name>` → PR → integration (CI validates) → h
 promotion is a separate gate. **Do not create a GitHub remote or push** unless the human explicitly
 authorizes it.
 
-## Step 4 — Hand off for review
+## Step 5 — Hand off for review
 
 - List every TODO you resolved and every one still open.
 - Tell the human: this brief is now loaded every session; if anything in it is wrong, fixing it is
