@@ -1,0 +1,31 @@
+# CI for the kit itself. There is no app to build — the "build" is linting the scaffolder.
+# Dormant until the GitHub remote exists; activates on first push. Make it a required check on main.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint scaffolder
+    runs-on: ubuntu-latest # shellcheck is preinstalled on ubuntu runners
+    steps:
+      - uses: actions/checkout@v4
+      - name: ShellCheck bin/
+        run: |
+          shopt -s nullglob
+          files=(bin/*.sh)
+          if [ ${#files[@]} -eq 0 ]; then echo "no shell scripts to lint"; exit 0; fi
+          shellcheck "${files[@]}"
+      - name: Smoke-test scaffolder (dry run)
+        run: |
+          if [ -x bin/devkit-init.sh ]; then
+            bash bin/devkit-init.sh --help
+          fi
