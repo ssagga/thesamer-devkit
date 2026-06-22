@@ -7,7 +7,27 @@ The backlog for building the kit itself. Status legend: `idea` · `speced` · `i
 
 _(scaffold complete — see Shipped)_
 
-## Next
+## Next — v0.2 Real-world hardening
+
+From the first real-world deployment (installed into & used on `thesamer.com-v5`). Full detail +
+evidence + "what to keep": [docs/v0.2-real-world-hardening.md](v0.2-real-world-hardening.md).
+Suggested order: A → B → E quick wins → preferences mechanism → C, D.
+
+| # | Item | Group | Status |
+|---|------|-------|--------|
+| 0 | Cross-cutting: "involvement preferences" mechanism (plan/preview gates) | core | idea |
+| 1 | Recursive + dep-aware store detection (missed nested `data/*.db`) | A install | idea |
+| 2 | Don't let the installer's own files be gitignored (`pre-pr-review` skill) | A install | idea |
+| 3 | Generate a runnable CI workflow (no double pnpm-version pin) | A install | idea |
+| 4 | Infer live/deploy branch from existing workflows (`main` vs `production`) | B brief | idea |
+| 5 | Add "build-time vs runtime data" hazard to the template | B brief | idea |
+| 6 | Plan-presentation gate agent (present plan before code, per preference) | C workflow | idea |
+| 7 | Optional local-preview gate between BUILD and VERIFY (per preference) | C workflow | idea |
+| 8 | Devkit update-awareness (provenance + `/devkit-update` + CHANGELOG) | D currency | idea |
+| 9 | Honest enforcement (branch protection unavailable on private free) | E ergo | idea |
+| 10 | Cut status-flip ceremony (roadmap update rides the same PR) | E ergo | idea |
+| 11 | Read-only `/status` digest skill | E ergo | idea |
+| 12 | Smooth "run & observe" (PATH fallbacks, per-stack launch+screenshot) | E ergo | idea |
 
 | Item | Status | Spec ref | Notes |
 |------|--------|----------|-------|
