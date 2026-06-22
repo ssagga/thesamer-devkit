@@ -107,7 +107,13 @@ No change reaches the live branch without a reviewable diff and a human approval
 
 ## Status
 
-Scaffold **built and dogfooded**: template files, agent roles, review + CI gates, the `devkit-init`
-script + skill, and this documentation are in place. The installer is verified against Node, empty,
-dry-run, force, and idempotent-rerun cases. Next: wire up the GitHub remote so CI activates and PRs
-become real (see [`docs/roadmap.md`](docs/roadmap.md)).
+Scaffold **built, dogfooded, and shipped**: template files, agent roles, review + CI gates, the
+`devkit-init` script + skill, the `curl … | bash` bootstrap, and this documentation are all in
+place and verified. The kit is developed using its own methodology — every change here went through
+`feat/* → PR → CI → merge`. Current backlog lives in [`docs/roadmap.md`](docs/roadmap.md).
+
+---
+
+## License
+
+[MIT](LICENSE) © 2026 Samer Al-Saqqa. Use it, fork it, adapt it into your own projects.
