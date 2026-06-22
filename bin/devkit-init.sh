@@ -9,6 +9,22 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 KIT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+DEVKIT_VERSION="$(cat "${KIT_ROOT}/VERSION" 2>/dev/null || echo 'unknown')"
+
+# Kit-owned "pure methodology" files — no per-project fill, so they are safe to force-refresh on
+# update. Project-authored files (CLAUDE.md, docs/roadmap.md, real specs/decisions) and generated
+# files (ci.yml, PR template, _templates) are deliberately NOT in this list. See ADR 0003.
+KIT_OWNED_PURE=(
+  ".claude/agents/explorer.md"
+  ".claude/agents/planner.md"
+  ".claude/agents/implementer.md"
+  ".claude/agents/reviewer.md"
+  ".claude/agents/plan-presenter.md"
+  ".claude/skills/pre-pr-review/SKILL.md"
+  ".claude/skills/status/SKILL.md"
+  ".claude/skills/preview/SKILL.md"
+  ".claude/skills/devkit-update/SKILL.md"
+)
 
 # ---------------------------------------------------------------------------
 # Defaults
@@ -18,6 +34,7 @@ FORCE=false
 INTEGRATION_BRANCH="main"
 NO_GIT=false
 TARGET_DIR=""
+MODE="install"   # install | check | update
 
 # ---------------------------------------------------------------------------
 # Counters
@@ -52,6 +69,11 @@ Options:
   --force                   Overwrite existing files (default: skip with warning).
   --integration-branch NAME Integration branch name (default: main).
   --no-git                  Skip all git-related guidance.
+  --check-updates           Report how the target's recorded devkit version compares to this kit,
+                            and which kit-owned files differ. Read-only; no scaffolding.
+  --update                  Refresh kit-owned methodology files (agents + skills) from this kit and
+                            bump the recorded version. Never touches CLAUDE.md, docs/, or generated
+                            files. Honors --dry-run.
 
 EOF
 }
@@ -72,6 +94,10 @@ while [[ $# -gt 0 ]]; do
       INTEGRATION_BRANCH="$2"; shift 2 ;;
     --no-git)
       NO_GIT=true; shift ;;
+    --check-updates)
+      MODE="check"; shift ;;
+    --update)
+      MODE="update"; shift ;;
     -*)
       err "Unknown option: $1"; usage; exit 1 ;;
     *)
@@ -148,6 +174,114 @@ write_file() {
   printf '%s\n' "${content}" > "${dst}"
   ok "Created: ${dst}"
   COUNT_CREATED=$(( COUNT_CREATED + 1 ))
+}
+
+# ---------------------------------------------------------------------------
+# Update-awareness: provenance + check + update.
+#   write_provenance records where/when/which devkit installed this project, so /devkit-update and
+#   --check-updates have something to compare against. The kit-owned/project-owned split (ADR 0003)
+#   is what makes updates safe: only KIT_OWNED_PURE files are ever refreshed.
+# ---------------------------------------------------------------------------
+write_provenance() {
+  local overwrite="${1:-false}"
+  local pf="${TARGET_DIR}/.claude/devkit.json"
+  if [[ "${DRY_RUN}" == true ]]; then dry "Would write: ${pf}"; return; fi
+  [[ -e "${pf}" && "${overwrite}" == false && "${FORCE}" == false ]] && return 0
+
+  local src ref
+  src="$(git -C "${KIT_ROOT}" remote get-url origin 2>/dev/null || echo 'https://github.com/ssagga/thesamer-devkit')"
+  ref="$(git -C "${KIT_ROOT}" rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
+
+  # JSON-escape the git-derived values so an unusual remote URL (a quote or backslash) can't produce
+  # invalid JSON that would silently break update-awareness. Escape backslashes first, then quotes,
+  # then drop any stray newlines.
+  json_escape() { local s="${1//\\/\\\\}"; s="${s//\"/\\\"}"; s="${s//$'\n'/}"; printf '%s' "${s}"; }
+  src="$(json_escape "${src}")"
+  ref="$(json_escape "${ref}")"
+
+  mkdir -p "$(dirname "${pf}")"
+  cat > "${pf}" <<JSON
+{
+  "devkit_source": "${src}",
+  "devkit_version": "${DEVKIT_VERSION}",
+  "devkit_ref": "${ref}",
+  "installed_at": "${TODAY}",
+  "note": "Provenance for devkit updates. 'devkit-init.sh --update' refreshes kit-owned files only; CLAUDE.md + docs/ are never auto-clobbered. See the devkit CHANGELOG.md."
+}
+JSON
+  ok "Recorded provenance: .claude/devkit.json (devkit ${DEVKIT_VERSION})"
+}
+
+# Read the devkit_version recorded in the target's provenance file (empty if none).
+recorded_version() {
+  local pf="${TARGET_DIR}/.claude/devkit.json"
+  [[ -f "${pf}" ]] || return 0
+  sed -n 's/.*"devkit_version": *"\([^"]*\)".*/\1/p' "${pf}" | head -1
+}
+
+check_updates() {
+  info "--- devkit update check ---"
+  info "This devkit : ${DEVKIT_VERSION}"
+  local installed
+  installed="$(recorded_version)"
+  if [[ -z "${installed}" ]]; then
+    note "No provenance file at ${TARGET_DIR}/.claude/devkit.json."
+    note "Run a normal 'devkit-init.sh ${TARGET_DIR}' once to record it, then re-check."
+    return 0
+  fi
+  info "This project: ${installed}"
+  if [[ "${installed}" == "${DEVKIT_VERSION}" ]]; then
+    ok "Project is on the current devkit version."
+  else
+    note "Update available: ${installed} -> ${DEVKIT_VERSION}. See the devkit CHANGELOG.md for what changed."
+  fi
+
+  local rel kf tf diffs=0
+  for rel in "${KIT_OWNED_PURE[@]}"; do
+    kf="${KIT_ROOT}/templates/${rel}"
+    tf="${TARGET_DIR}/${rel}"
+    [[ -f "${kf}" ]] || continue
+    if [[ ! -f "${tf}" ]]; then
+      note "  + ${rel} (new in this devkit — not yet installed)"; diffs=$(( diffs + 1 ))
+    elif ! diff -q "${kf}" "${tf}" >/dev/null 2>&1; then
+      note "  ~ ${rel} (differs — would be refreshed by --update)"; diffs=$(( diffs + 1 ))
+    fi
+  done
+  if [[ "${diffs}" -eq 0 ]]; then
+    ok "All kit-owned files match this devkit."
+  else
+    note "${diffs} kit-owned file(s) would change on --update. CLAUDE.md, docs/, and generated files are never touched."
+  fi
+}
+
+do_update() {
+  info "--- devkit update (kit-owned files only) ---"
+  note "Refreshing kit-owned methodology files. NOT touched: CLAUDE.md, docs/roadmap.md, your specs"
+  note "+ decisions, and generated files (ci.yml, PR template, _templates) — review the CHANGELOG"
+  note "and update those by hand if needed."
+
+  local rel kf tf updated=0
+  for rel in "${KIT_OWNED_PURE[@]}"; do
+    kf="${KIT_ROOT}/templates/${rel}"
+    tf="${TARGET_DIR}/${rel}"
+    [[ -f "${kf}" ]] || continue
+    if [[ -f "${tf}" ]] && diff -q "${kf}" "${tf}" >/dev/null 2>&1; then
+      continue   # already identical
+    fi
+    if [[ "${DRY_RUN}" == true ]]; then
+      dry "Would refresh: ${rel}"
+    else
+      mkdir -p "$(dirname "${tf}")"; cp "${kf}" "${tf}"; ok "Refreshed: ${rel}"
+    fi
+    updated=$(( updated + 1 ))
+  done
+
+  if [[ "${DRY_RUN}" == true ]]; then
+    dry "Would refresh ${updated} kit-owned file(s) and bump provenance to ${DEVKIT_VERSION}."
+  else
+    write_provenance true
+    ok "Refreshed ${updated} kit-owned file(s); provenance now ${DEVKIT_VERSION}."
+  fi
 }
 
 # ---------------------------------------------------------------------------
@@ -408,6 +542,20 @@ detect_stack() {
 
   STACK_DESCRIPTION="${parts[*]:-}"
 }
+
+# Update-awareness modes short-circuit normal scaffolding.
+if [[ "${MODE}" == "check" ]]; then
+  check_updates
+  echo ""
+  ok "devkit-init --check-updates complete."
+  exit 0
+fi
+if [[ "${MODE}" == "update" ]]; then
+  do_update
+  echo ""
+  ok "devkit-init --update complete."
+  exit 0
+fi
 
 detect_stack
 
@@ -681,6 +829,7 @@ copy_file "${KIT_ROOT}/templates/.claude/agents/plan-presenter.md"   "${TARGET_D
 copy_file "${KIT_ROOT}/templates/.claude/skills/pre-pr-review/SKILL.md"  "${TARGET_DIR}/.claude/skills/pre-pr-review/SKILL.md"
 copy_file "${KIT_ROOT}/templates/.claude/skills/status/SKILL.md"         "${TARGET_DIR}/.claude/skills/status/SKILL.md"
 copy_file "${KIT_ROOT}/templates/.claude/skills/preview/SKILL.md"        "${TARGET_DIR}/.claude/skills/preview/SKILL.md"
+copy_file "${KIT_ROOT}/templates/.claude/skills/devkit-update/SKILL.md"  "${TARGET_DIR}/.claude/skills/devkit-update/SKILL.md"
 
 # .github/
 copy_file "${KIT_ROOT}/templates/.github/pull_request_template.md"   "${TARGET_DIR}/.github/pull_request_template.md"
@@ -689,6 +838,9 @@ copy_file "${KIT_ROOT}/templates/.github/pull_request_template.md"   "${TARGET_D
 write_file "${TARGET_DIR}/.github/workflows/ci.yml" <<EOF
 $(build_ci_yml)
 EOF
+
+# .claude/devkit.json — provenance for update-awareness (don't overwrite a human-edited one).
+write_provenance false
 
 echo ""
 
@@ -720,9 +872,11 @@ guard_against_gitignore() {
   git -C "${TARGET_DIR}" rev-parse --git-dir >/dev/null 2>&1 || return 0
 
   local critical=(
+    ".claude/devkit.json"
     ".claude/skills/pre-pr-review/SKILL.md"
     ".claude/skills/status/SKILL.md"
     ".claude/skills/preview/SKILL.md"
+    ".claude/skills/devkit-update/SKILL.md"
     ".claude/agents/explorer.md"
     ".claude/agents/plan-presenter.md"
     ".claude/agents/planner.md"
