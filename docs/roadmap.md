@@ -11,7 +11,6 @@ _(scaffold complete — see Shipped)_
 
 | Item | Status | Spec ref | Notes |
 |------|--------|----------|-------|
-| Make CI a required status check on `main` | idea | §7 | Branch protection: require the `CI` check (and PRs) so nothing reaches `main` red/unreviewed. Owner action in repo Settings → Branches (plan-dependent for private repos). |
 | Bump `actions/checkout` when GitHub finalizes Node 20 deprecation | idea | — | Non-blocking CI annotation today. |
 
 ## Shipped
@@ -25,8 +24,9 @@ _(scaffold complete — see Shipped)_
 | Setup routine (`devkit-init` script + skill) | 2026-06-22 | Verified Node/empty/dry-run/force/idempotent. Spec [setup-routine](features/setup-routine.md). |
 | System docs (README rewrite, 5-min onboarding) | 2026-06-22 | All §10 acceptance criteria verified. |
 | GitHub remote + push + CI activation | 2026-06-22 | Private repo `ssagga/thesamer-devkit`; `main` pushed; CI green. |
-| One-command GitHub bootstrap installer | 2026-06-22 | `install.sh` (`curl … \| bash`) + README single-command/agent-prompt. PR #2. Activates when repo goes public. |
+| One-command GitHub bootstrap installer | 2026-06-22 | `install.sh` (`curl … \| bash`) + README single-command/agent-prompt. PR #2. |
 | Turnkey git init (one-liner sets up repo + branch) | 2026-06-22 | `devkit-init.sh` auto-inits a fresh repo on the integration branch; crisp next-steps. PR #4. |
+| Open-source launch (public repo, MIT, branch protection) | 2026-06-22 | Repo public; MIT LICENSE (PR #5); `main` protected (required `Lint scaffolder` check + PR). Live `curl \| bash` verified end-to-end (Next.js → 12 files → git on `main`). |
 
 ## Acceptance criteria (definition of done for the whole scaffold — spec §10)
 
