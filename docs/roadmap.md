@@ -21,8 +21,8 @@ Suggested order: A → B → E quick wins → preferences mechanism → C, D.
 | 3 | Generate a runnable CI workflow (no double pnpm-version pin) | A install | shipped |
 | 4 | Infer live/deploy branch from existing workflows (`main` vs `production`) | B brief | shipped |
 | 5 | Add "build-time vs runtime data" hazard to the template | B brief | shipped |
-| 6 | Plan-presentation gate agent (present plan before code, per preference) | C workflow | idea |
-| 7 | Optional local-preview gate between BUILD and VERIFY (per preference) | C workflow | idea |
+| 6 | Plan-presentation gate agent (present plan before code, per preference) | C workflow | shipped |
+| 7 | Optional local-preview gate between BUILD and VERIFY (per preference) | C workflow | shipped |
 | 8 | Devkit update-awareness (provenance + `/devkit-update` + CHANGELOG) | D currency | idea |
 | 9 | Honest enforcement (branch protection unavailable on private free) | E ergo | shipped |
 | 10 | Cut status-flip ceremony (roadmap update rides the same PR) | E ergo | shipped |
@@ -51,6 +51,7 @@ Suggested order: A → B → E quick wins → preferences mechanism → C, D.
 | v0.2 group B — brief fidelity (items 4, 5) | 2026-06-22 | Infers live/deploy branch from deploy workflows (`refs/heads` + `branches:` lists) and threads it through the brief; adds build-time-vs-runtime-data hazard to the template. Spec [brief-fidelity](features/brief-fidelity.md); verified against block/inline/fallback/stress fixtures. |
 | v0.2 group E — ergonomics (items 9, 10, 11, 12) | 2026-06-22 | Enforcement honesty (report, not auto-apply — ADR [0002](decisions/0002-enforcement-report-not-auto-apply.md); inactive `pre-push` backstop); status-flip rides the shipping PR; read-only `/status` skill; run-&-observe + PATH-fallback docs. Spec [ergonomics](features/ergonomics.md); review verdict SHIP. |
 | v0.2 item 0 — preferences keystone | 2026-06-22 | `## Working preferences` block in the brief (plan gate / preview gate / merge-stay-human), captured once by the `devkit-init` skill; the source the C-group gates read. Spec [preferences](features/preferences.md). |
+| v0.2 group C — workflow gates (items 6, 7) | 2026-06-22 | Explicit `## Feature lifecycle` in the template with two preference-driven gates: `plan-presenter` agent (consolidate + stop for go/no-go before code) and `preview` skill (optional local look between BUILD and VERIFY). Spec [workflow-gates](features/workflow-gates.md); review verdict SHIP. |
 
 ## Acceptance criteria (definition of done for the whole scaffold — spec §10)
 

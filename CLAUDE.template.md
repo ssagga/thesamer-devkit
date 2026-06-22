@@ -76,6 +76,32 @@ Detail lives in `docs/`. Add to the map only what an agent needs to orient; link
 
 ---
 
+## Feature lifecycle
+
+Every unit of work flows through this; ceremony scales with size (see Conventions → Ceremony). Two
+steps are **gates** that read the Working-preferences block above.
+
+1. **ORIENT** — the brief is already loaded. Read the roadmap + relevant spec if resuming. Don't
+   re-explore; delegate search to an Explorer.
+2. **SPEC** — for substantial work, write `docs/features/<name>.md` first.
+3. **PLAN GATE** — consolidate the Explorer findings, the chosen approach, and the draft spec into
+   one approval-ready summary (scope · files to create/change · approach · data/migration impact ·
+   verify plan) and **wait for go/no-go before writing code.** Fires per the **plan gate**
+   preference; delegate to the `plan-presenter` agent. On Claude Code this maps to plan mode. When
+   `never`, planning still happens — it just doesn't stop for sign-off.
+4. **BRANCH** — `feat/<name>` from `<integration-branch>`. Never work on `<live-branch>`.
+5. **BUILD** — implement on the branch; delegate sub-tasks by model tier.
+6. **PREVIEW (optional)** — before verifying, optionally launch the change locally so you can look —
+   *especially for visual/UI work* — instead of running straight to the end. Fires per the
+   **preview gate** preference; use the `preview` skill. Skipped when `never`, or for non-visual
+   changes under `visual-only`.
+7. **VERIFY** — run the build, run/observe the app, run the adversarial review pass; fix findings.
+8. **DOCUMENT** — update this brief, roadmap status, and the decision log — in the **same PR**.
+9. **PR → MERGE** — open a PR into `<integration-branch>`; the **human** reviews and merges.
+10. **RELEASE** — promote to `<live-branch>` as a deliberate, separate, **human-only** gate.
+
+---
+
 ## Conventions
 
 - **Branch model:** `feat/<name>` → PR → `<integration-branch>` (CI validates) → human merges →
