@@ -5,7 +5,9 @@ The backlog for building the kit itself. Status legend: `idea` · `speced` · `i
 
 ## Now / in-progress
 
-_(scaffold complete — see Shipped)_
+| Item | Status | Branch | Notes |
+|------|--------|--------|-------|
+| One-command GitHub bootstrap installer | in-progress | `feat/one-command-install` | `install.sh` (`curl … \| bash`) + README single-command/agent-prompt. Keeps bash engine. |
 
 ## Next
 

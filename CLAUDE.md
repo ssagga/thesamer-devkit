@@ -56,6 +56,8 @@ the scaffold lands correctly (see `docs/features/` verify plans).
   `devkit-init` copies into a target repo and fills in.
 - **`templates/`** — everything else that gets installed: `docs/` tree templates, `.claude/agents/`
   role defs, `.github/` CI + PR template.
+- **`install.sh`** (root) — one-command bootstrap: fetches the kit tarball from GitHub and runs
+  `bin/devkit-init.sh` against the user's cwd. The `curl … | bash` entry point in the README.
 - **`bin/devkit-init.sh`** — deterministic scaffolder: detects stack/deploy/store, copies templates,
   fills what it can, creates the docs tree + branch convention.
 - **`.claude/skills/devkit-init/`** — the smart entry point that drives the script + fills `CLAUDE.md`.
