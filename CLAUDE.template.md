@@ -32,6 +32,23 @@
 
 ---
 
+## Working preferences
+
+How much the agent pauses for you. `devkit-init` asks once at install; edit anytime — the agent
+reads these values directly, no tooling required. Every gate in the lifecycle reads this block
+instead of hardcoding behavior.
+
+- **Plan gate:** `substantial-only` — present a concrete, approval-ready plan and wait for your
+  go/no-go before writing code. Options: `always` · `substantial-only` · `never`. (When `never`,
+  planning still happens — it just doesn't stop for sign-off. On Claude Code, `always` /
+  `substantial-only` map to plan mode.)
+- **Preview gate:** `visual-only` — after BUILD, pause to let you see the change running locally
+  before VERIFY. Options: `always` · `visual-only` · `never`.
+- **Merge & promote:** **human, always — not configurable.** The agent never merges a PR or promotes
+  to `<live-branch>` on its own. This is the one hard gate.
+
+---
+
 ## Commands
 
 ```bash
