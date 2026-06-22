@@ -164,6 +164,38 @@ STACK_STORE="none"
 STACK_STORE_CERTAIN=true   # false ⇒ inferred from a dependency only; needs human confirmation
 STACK_STORE_EVIDENCE=""    # human-readable why, e.g. "data/app.db" or "better-sqlite3 dependency"
 STACK_DEPLOY=""
+STACK_LIVE_BRANCH=""       # branch a deploy workflow ships from, when it differs from integration
+
+# Emit candidate branch names (one per line) referenced by a workflow file: `refs/heads/<x>`
+# guards and `on.push.branches` lists (inline `[a, b]` or block `- a`). Quotes/spaces are cleaned
+# by the caller; this only locates the tokens.
+extract_wf_branches() {
+  awk '
+    {
+      tmp = $0
+      while (match(tmp, /refs\/heads\/[A-Za-z0-9._\/-]+/)) {
+        b = substr(tmp, RSTART, RLENGTH); sub(/refs\/heads\//, "", b); print b
+        tmp = substr(tmp, RSTART + RLENGTH)
+      }
+    }
+    /branches:/ {
+      # Inline list anywhere on the line: branches: [a, b]  (incl. compact flow style).
+      if (match($0, /\[[^]]*\]/)) {
+        inner = substr($0, RSTART + 1, RLENGTH - 2)
+        n = split(inner, a, ","); for (i = 1; i <= n; i++) print a[i]
+        inblock = 0
+      } else if ($0 ~ /^[[:space:]]*branches:[[:space:]]*$/) {
+        inblock = 1   # block style: `branches:` then `- name` lines below
+      }
+      next
+    }
+    inblock == 1 {
+      if ($0 ~ /^[[:space:]]*-[[:space:]]*/) {
+        v = $0; sub(/^[[:space:]]*-[[:space:]]*/, "", v); sub(/[[:space:]]*#.*/, "", v); print v
+      } else if ($0 ~ /[^[:space:]]/) inblock = 0
+    }
+  ' "$1" 2>/dev/null
+}
 
 detect_stack() {
   local t="${TARGET_DIR}"
@@ -348,6 +380,32 @@ detect_stack() {
     fi
   fi
 
+  # Live/deploy-branch inference. If a deploy-flavored workflow ships from a branch other than the
+  # integration branch, surface it (real-world: main = CI, production = deploy). Best-effort; the
+  # default assumption stays live == integration when nothing distinct is found.
+  local wf_all=()
+  for f in "${t}"/.github/workflows/*.yml "${t}"/.github/workflows/*.yaml; do
+    [[ -e "${f}" ]] && wf_all+=("${f}")
+  done
+  if [[ ${#wf_all[@]} -gt 0 ]]; then
+    local brs="" known cand=""
+    for f in "${wf_all[@]}"; do
+      grep -qiE 'deploy|release|publish' "${f}" 2>/dev/null || continue
+      brs+="$(extract_wf_branches "${f}" | sed "s/[\"' ]//g")"$'\n'
+    done
+    # Prefer a well-known live-branch name; otherwise take the first non-integration candidate.
+    for known in production prod release live stable deploy master main; do
+      [[ "${known}" == "${INTEGRATION_BRANCH}" ]] && continue
+      if printf '%s\n' "${brs}" | grep -qxF "${known}"; then cand="${known}"; break; fi
+    done
+    if [[ -z "${cand}" ]]; then
+      # `|| true`: grep exits 1 when nothing remains after excluding the integration branch, which
+      # would abort the script under `set -euo pipefail`. Empty cand is the correct outcome there.
+      cand="$(printf '%s\n' "${brs}" | grep -vxF "${INTEGRATION_BRANCH}" | sed '/^[[:space:]]*$/d' | head -1 || true)"
+    fi
+    [[ -n "${cand}" ]] && STACK_LIVE_BRANCH="${cand}"
+  fi
+
   STACK_DESCRIPTION="${parts[*]:-}"
 }
 
@@ -361,7 +419,11 @@ elif [[ "${STACK_STORE}" != "none" ]]; then
 else
   info "Store     : none"
 fi
-info "Deploy    : ${STACK_DEPLOY:-unknown}"
+if [[ -n "${STACK_LIVE_BRANCH}" ]]; then
+  info "Deploy    : ${STACK_DEPLOY:-unknown} (live branch inferred: ${STACK_LIVE_BRANCH})"
+else
+  info "Deploy    : ${STACK_DEPLOY:-unknown}"
+fi
 echo ""
 
 # ---------------------------------------------------------------------------
@@ -402,7 +464,9 @@ build_claude_md() {
 
   # Deploy line
   local deploy_val
-  if [[ -n "${STACK_DEPLOY}" ]]; then
+  if [[ -n "${STACK_DEPLOY}" && -n "${STACK_LIVE_BRANCH}" ]]; then
+    deploy_val="${STACK_DEPLOY} (branch: ${STACK_LIVE_BRANCH} → ${STACK_DEPLOY}) <!-- TODO: confirm — '${STACK_LIVE_BRANCH}' inferred from a deploy workflow -->"
+  elif [[ -n "${STACK_DEPLOY}" ]]; then
     deploy_val="${STACK_DEPLOY} (branch: ${INTEGRATION_BRANCH} → ${STACK_DEPLOY}) <!-- TODO: confirm branch/target -->"
   else
     deploy_val="<how it ships — branch, CI, target> <!-- TODO: devkit-init could not infer; fill in -->"
@@ -454,9 +518,12 @@ build_claude_md() {
   # Branch model placeholders
   raw="${raw//<integration-branch>/${INTEGRATION_BRANCH}}"
 
-  # live-branch: if we have a deploy target, suggest a separate 'prod'/'release'; else default to integration
+  # live-branch: prefer one inferred from a deploy workflow; else, if a deploy target exists but no
+  # distinct branch was found, leave a TODO; else default to the integration branch.
   local live_br_name
-  if [[ -n "${STACK_DEPLOY}" ]]; then
+  if [[ -n "${STACK_LIVE_BRANCH}" ]]; then
+    live_br_name="${STACK_LIVE_BRANCH}"
+  elif [[ -n "${STACK_DEPLOY}" ]]; then
     live_br_name="<live-branch> <!-- TODO: devkit-init could not determine live branch; common values: prod, release, main -->"
   else
     live_br_name="${INTEGRATION_BRANCH}"
@@ -773,7 +840,9 @@ collect_todos() {
   todos+=("CLAUDE.md: One-sentence project description — fill in manually.")
   todos+=("CLAUDE.md: Architecture map (<area/dir> entries) — fill in manually.")
   todos+=("CLAUDE.md: Conventions / gotchas — fill in manually.")
-  if [[ -n "${STACK_DEPLOY}" ]]; then
+  if [[ -n "${STACK_LIVE_BRANCH}" ]]; then
+    todos+=("CLAUDE.md: live branch inferred as '${STACK_LIVE_BRANCH}' (≠ integration '${INTEGRATION_BRANCH}') from a deploy workflow — confirm.")
+  elif [[ -n "${STACK_DEPLOY}" ]]; then
     todos+=("CLAUDE.md: <live-branch> — a deploy target was detected; confirm the live branch name.")
   fi
   for t in "${todos[@]}"; do
