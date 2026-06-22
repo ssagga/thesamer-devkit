@@ -24,10 +24,10 @@ Suggested order: A → B → E quick wins → preferences mechanism → C, D.
 | 6 | Plan-presentation gate agent (present plan before code, per preference) | C workflow | idea |
 | 7 | Optional local-preview gate between BUILD and VERIFY (per preference) | C workflow | idea |
 | 8 | Devkit update-awareness (provenance + `/devkit-update` + CHANGELOG) | D currency | idea |
-| 9 | Honest enforcement (branch protection unavailable on private free) | E ergo | idea |
-| 10 | Cut status-flip ceremony (roadmap update rides the same PR) | E ergo | idea |
-| 11 | Read-only `/status` digest skill | E ergo | idea |
-| 12 | Smooth "run & observe" (PATH fallbacks, per-stack launch+screenshot) | E ergo | idea |
+| 9 | Honest enforcement (branch protection unavailable on private free) | E ergo | shipped |
+| 10 | Cut status-flip ceremony (roadmap update rides the same PR) | E ergo | shipped |
+| 11 | Read-only `/status` digest skill | E ergo | shipped |
+| 12 | Smooth "run & observe" (PATH fallbacks, per-stack launch+screenshot) | E ergo | shipped |
 
 | Item | Status | Spec ref | Notes |
 |------|--------|----------|-------|
@@ -49,6 +49,7 @@ Suggested order: A → B → E quick wins → preferences mechanism → C, D.
 | Open-source launch (public repo, MIT, branch protection) | 2026-06-22 | Repo public; MIT LICENSE (PR #5); `main` protected (required `Lint scaffolder` check + PR). Live `curl \| bash` verified end-to-end (Next.js → 12 files → git on `main`). |
 | v0.2 group A — installer correctness (items 1, 2, 3) | 2026-06-22 | Recursive + dep-aware store detection w/ certainty (never deletes Data-safety on a false negative); gitignore guard keeps kit files tracked; runnable CI (corepack, no double pnpm-pin). Spec [installer-correctness](features/installer-correctness.md); verified against 6 fixtures. |
 | v0.2 group B — brief fidelity (items 4, 5) | 2026-06-22 | Infers live/deploy branch from deploy workflows (`refs/heads` + `branches:` lists) and threads it through the brief; adds build-time-vs-runtime-data hazard to the template. Spec [brief-fidelity](features/brief-fidelity.md); verified against block/inline/fallback/stress fixtures. |
+| v0.2 group E — ergonomics (items 9, 10, 11, 12) | 2026-06-22 | Enforcement honesty (report, not auto-apply — ADR [0002](decisions/0002-enforcement-report-not-auto-apply.md); inactive `pre-push` backstop); status-flip rides the shipping PR; read-only `/status` skill; run-&-observe + PATH-fallback docs. Spec [ergonomics](features/ergonomics.md); review verdict SHIP. |
 
 ## Acceptance criteria (definition of done for the whole scaffold — spec §10)
 
