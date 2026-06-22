@@ -5,13 +5,14 @@ The backlog for building the kit itself. Status legend: `idea` · `speced` · `i
 
 ## Now / in-progress
 
-_(scaffold complete — see Shipped)_
+_(v0.2 hardening — all 13 items shipped on stacked PRs; pending human merge of the chain. Cut the
+`v0.2.0` tag after merge. See Shipped.)_
 
-## Next — v0.2 Real-world hardening
+## v0.2 Real-world hardening — COMPLETE
 
 From the first real-world deployment (installed into & used on `thesamer.com-v5`). Full detail +
 evidence + "what to keep": [docs/v0.2-real-world-hardening.md](v0.2-real-world-hardening.md).
-Suggested order: A → B → E quick wins → preferences mechanism → C, D.
+All items below shipped; per-group specs in `docs/features/`.
 
 | # | Item | Group | Status |
 |---|------|-------|--------|
@@ -23,7 +24,7 @@ Suggested order: A → B → E quick wins → preferences mechanism → C, D.
 | 5 | Add "build-time vs runtime data" hazard to the template | B brief | shipped |
 | 6 | Plan-presentation gate agent (present plan before code, per preference) | C workflow | shipped |
 | 7 | Optional local-preview gate between BUILD and VERIFY (per preference) | C workflow | shipped |
-| 8 | Devkit update-awareness (provenance + `/devkit-update` + CHANGELOG) | D currency | idea |
+| 8 | Devkit update-awareness (provenance + `/devkit-update` + CHANGELOG) | D currency | shipped |
 | 9 | Honest enforcement (branch protection unavailable on private free) | E ergo | shipped |
 | 10 | Cut status-flip ceremony (roadmap update rides the same PR) | E ergo | shipped |
 | 11 | Read-only `/status` digest skill | E ergo | shipped |
@@ -52,6 +53,7 @@ Suggested order: A → B → E quick wins → preferences mechanism → C, D.
 | v0.2 group E — ergonomics (items 9, 10, 11, 12) | 2026-06-22 | Enforcement honesty (report, not auto-apply — ADR [0002](decisions/0002-enforcement-report-not-auto-apply.md); inactive `pre-push` backstop); status-flip rides the shipping PR; read-only `/status` skill; run-&-observe + PATH-fallback docs. Spec [ergonomics](features/ergonomics.md); review verdict SHIP. |
 | v0.2 item 0 — preferences keystone | 2026-06-22 | `## Working preferences` block in the brief (plan gate / preview gate / merge-stay-human), captured once by the `devkit-init` skill; the source the C-group gates read. Spec [preferences](features/preferences.md). |
 | v0.2 group C — workflow gates (items 6, 7) | 2026-06-22 | Explicit `## Feature lifecycle` in the template with two preference-driven gates: `plan-presenter` agent (consolidate + stop for go/no-go before code) and `preview` skill (optional local look between BUILD and VERIFY). Spec [workflow-gates](features/workflow-gates.md); review verdict SHIP. |
+| v0.2 group D — update-awareness (item 8) | 2026-06-22 | Provenance (`.claude/devkit.json`) + `VERSION` + `CHANGELOG.md`; `devkit-init.sh --check-updates`/`--update` (refresh kit-owned files only, never `CLAUDE.md`/`docs/`); `/devkit-update` skill. Merge strategy ADR [0003](decisions/0003-devkit-update-merge-strategy.md). Spec [devkit-update](features/devkit-update.md). |
 
 ## Acceptance criteria (definition of done for the whole scaffold — spec §10)
 
